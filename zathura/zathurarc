@@ -1,0 +1,22 @@
+include vesperrc
+
+set recolor true
+set statusbar-basename true
+set database plain
+
+map j scroll up
+map k scroll down
+
+map [fullscreen] j scroll up
+map [fullscreen] k scroll down
+
+map [presentation] j navigate previous
+map [presentation] k navigate next
+
+map [index] j navigate_index up
+map [index] k navigate_index down
+
+map J navigate previous
+map K navigate next
+
+map <Tab> toggle_index

@@ -1,0 +1,16 @@
+diff --git a/hyprbars/barDeco.cpp b/hyprbars/barDeco.cpp
+index 993c8f3..3fb9469 100644
+--- a/hyprbars/barDeco.cpp
++++ b/hyprbars/barDeco.cpp
+@@ -569,6 +569,11 @@ void CHyprBar::renderPass(PHLMONITOR pMonitor, const float& a) {
+         const auto yOffset           = std::round((BARBUF.y - m_pTextTex->m_size.y) / 2.0);
+         CBox       titleBox          = {textBox.x + xOffset, textBox.y + yOffset, m_pTextTex->m_size.x, m_pTextTex->m_size.y};
+ 
++        CHyprColor titleBg = configColor(0xff101010);
++        titleBg.a *= a;
++        CBox bgBox = {titleBox.x - scaledBarPadding / 2.0, textBox.y, titleBox.w + scaledBarPadding, BARBUF.y};
++        g_pHyprOpenGL->renderRect(bgBox.round(), titleBg, {.round = 0, .roundingPower = 0});
++
+         g_pHyprOpenGL->renderTexture(m_pTextTex, titleBox, {.a = a});
+     }
+ 

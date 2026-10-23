@@ -1,0 +1,54 @@
+-- Vesper group colours (rice/ascii/vesperize.py, from Noctalia's noctalia.lua)
+
+local primary = "rgb(ffc799)"
+local surface = "rgb(101010)"
+local on_surface = "rgb(a0a0a0)"
+local secondary = "rgb(ffc799)"
+local on_secondary = "rgb(101010)"
+local error = "rgb(ff8080)"
+local on_error = "rgb(101010)"
+
+local function apply_theme()
+    hl.config({
+        general = {
+            col = {
+                active_border = primary,
+                inactive_border = surface,
+            },
+        },
+        group = {
+            col = {
+                border_active = secondary,
+                border_inactive = surface,
+                border_locked_active = error,
+                border_locked_inactive = surface,
+            },
+
+            groupbar = {
+                col = {
+                    active = secondary,
+                    inactive = surface,
+                    locked_active = error,
+                    locked_inactive = surface,
+                },
+                text_color = on_secondary,
+                text_color_inactive = on_surface,
+                text_color_locked_active = on_error,
+                text_color_locked_inactive = on_surface,
+            },
+        },
+    })
+end
+
+return {
+    colors = {
+        primary = primary,
+        surface = surface,
+        on_surface = on_surface,
+        secondary = secondary,
+        on_secondary = on_secondary,
+        error = error,
+        on_error = on_error,
+    },
+    apply_theme = apply_theme
+}

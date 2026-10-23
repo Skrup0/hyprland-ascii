@@ -1,0 +1,13 @@
+[opener]
+zathura = [
+  { run = 'zathura "$@"', desc = "Zathura", orphan = true },
+]
+play = [
+    { run = 'mpv "$@"', desc = "Open in mpv playlist", orphan = true, for = "unix" },
+]
+
+[open]
+prepend_rules = [
+  { mime = "application/pdf",      use = "zathura" },
+  { mime = "application/epub+zip", use = "zathura" },
+]

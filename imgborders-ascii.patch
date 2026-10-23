@@ -1,0 +1,13 @@
+diff --git a/ImgBorder.cpp b/ImgBorder.cpp
+index c4a1759..06f4c1c 100644
+--- a/ImgBorder.cpp
++++ b/ImgBorder.cpp
+@@ -67,7 +67,7 @@ void CImgBorder::damageEntire() {
+ }
+ 
+ eDecorationLayer CImgBorder::getDecorationLayer() {
+-  return DECORATION_LAYER_OVER;
++  return DECORATION_LAYER_BOTTOM;
+ }
+ 
+ uint64_t CImgBorder::getDecorationFlags() {
