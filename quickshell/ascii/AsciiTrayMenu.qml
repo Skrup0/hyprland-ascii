@@ -1,6 +1,5 @@
 import QtQuick
 import Quickshell
-import Quickshell.Hyprland
 import qs.config
 
 PopupWindow {
@@ -56,6 +55,7 @@ PopupWindow {
 
     visible: false
     color: "transparent"
+    grabFocus: true
     anchor.window: barWindow
     anchor.rect.x: anchorX
     anchor.rect.y: barWindow.height + 4
@@ -69,12 +69,6 @@ PopupWindow {
     QsMenuOpener {
         id: opener
         menu: root.visible ? root.currentMenu : null
-    }
-
-    HyprlandFocusGrab {
-        active: root.visible
-        windows: [root]
-        onCleared: root.visible = false
     }
 
     Box {
@@ -103,7 +97,7 @@ PopupWindow {
                 AsciiText {
                     x: Ascii.cw
                     text: "◄ " + (root.stack.length > 0 ? root.label(root.stack[root.stack.length - 1]) : "")
-                    color: back.lit ? Ascii.bg : Ascii.fg
+                    color: back.lit ? Ascii.accText : Ascii.fg
                 }
 
                 MouseArea {
@@ -116,11 +110,10 @@ PopupWindow {
             }
         }
 
-        AsciiText {
+        Separator {
             y: 2 * Ascii.ch
             visible: root.stack.length > 0
-            text: "├" + "─".repeat(root.cols - 2) + "┤"
-            color: Ascii.frame
+            cols: root.cols
         }
 
         Repeater {
@@ -139,11 +132,10 @@ PopupWindow {
                 width: (root.cols - 2) * Ascii.cw
                 height: Ascii.ch
 
-                AsciiText {
+                Separator {
                     x: -Ascii.cw
                     visible: row.modelData.isSeparator
-                    text: "├" + "─".repeat(root.cols - 2) + "┤"
-                    color: Ascii.frame
+                    cols: root.cols
                 }
 
                 Rectangle {
@@ -158,14 +150,14 @@ PopupWindow {
                     elide: Text.ElideRight
                     visible: !row.modelData.isSeparator
                     text: root.mark(row.modelData) + root.label(row.modelData)
-                    color: row.lit ? Ascii.bg : row.modelData.enabled ? Ascii.fg : Ascii.dim
+                    color: row.lit ? Ascii.accText : row.modelData.enabled ? Ascii.fg : Ascii.dim
                 }
 
                 AsciiText {
                     x: parent.width - 2 * Ascii.cw
                     visible: row.modelData.hasChildren
                     text: "►"
-                    color: row.lit ? Ascii.bg : Ascii.dim
+                    color: row.lit ? Ascii.accText : Ascii.dim
                 }
 
                 MouseArea {

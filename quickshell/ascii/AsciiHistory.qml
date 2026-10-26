@@ -13,12 +13,23 @@ PanelWindow {
     readonly property int maxRows: 30
     readonly property var items: [...Notifs.list.values].reverse()
 
+    function pick(notification, open) {
+        if (!notification)
+            return
+        if (open) {
+            Notifs.activate(notification)
+            visible = false
+        }
+        notification.dismiss()
+    }
+
     function toggle() {
         if (visible) {
             visible = false
             return
         }
         screen = [...Quickshell.screens].find(s => s.name === Hyprland.focusedMonitor?.name) ?? Quickshell.screens[0]
+        list.currentIndex = 0
         list.positionViewAtBeginning()
         visible = true
         box.forceActiveFocus()
@@ -39,7 +50,7 @@ PanelWindow {
     color: "transparent"
     WlrLayershell.layer: WlrLayer.Overlay
     WlrLayershell.namespace: "asciibar-history"
-    WlrLayershell.keyboardFocus: visible ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
+    WlrLayershell.keyboardFocus: visible ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
     implicitWidth: box.width
     implicitHeight: box.height
 
@@ -64,6 +75,11 @@ PanelWindow {
         title: "notifications " + root.items.length
         focus: true
         Keys.onEscapePressed: root.visible = false
+        Keys.onUpPressed: list.currentIndex = Math.max(0, list.currentIndex - 1)
+        Keys.onDownPressed: list.currentIndex = Math.min(list.count - 1, list.currentIndex + 1)
+        Keys.onReturnPressed: root.pick(root.items[list.currentIndex], true)
+        Keys.onEnterPressed: root.pick(root.items[list.currentIndex], true)
+        Keys.onSpacePressed: root.pick(root.items[list.currentIndex], false)
 
         ListView {
             id: list
@@ -74,12 +90,16 @@ PanelWindow {
             height: box.listRows * Ascii.ch
             clip: true
             boundsBehavior: Flickable.StopAtBounds
-            model: root.items
+            highlightMoveDuration: 0
+            model: ScriptModel {
+                values: root.items
+            }
 
             delegate: Item {
                 id: entry
 
                 required property var modelData
+                required property int index
 
                 readonly property string appName: modelData?.appName ?? ""
                 readonly property string summary: modelData?.summary ?? ""
@@ -94,7 +114,7 @@ PanelWindow {
                 Rectangle {
                     width: parent.width
                     height: parent.height - Ascii.ch
-                    visible: mouse.containsMouse
+                    visible: entry.ListView.isCurrentItem
                     color: Ascii.line
                 }
 
@@ -141,21 +161,12 @@ PanelWindow {
                 }
 
                 MouseArea {
-                    id: mouse
-
                     width: parent.width
                     height: parent.height - Ascii.ch
                     hoverEnabled: true
                     acceptedButtons: Qt.LeftButton | Qt.RightButton
-                    onClicked: mouse => {
-                        const n = entry.modelData
-                        if (!n) return
-                        if (mouse.button === Qt.LeftButton) {
-                            Notifs.activate(n)
-                            root.visible = false
-                        }
-                        n.dismiss()
-                    }
+                    onEntered: list.currentIndex = entry.index
+                    onClicked: mouse => root.pick(entry.modelData, mouse.button === Qt.LeftButton)
                 }
             }
         }
@@ -168,10 +179,9 @@ PanelWindow {
             color: Ascii.dim
         }
 
-        AsciiText {
+        Separator {
             y: (box.listRows + 1) * Ascii.ch
-            text: "├" + "─".repeat(root.cols - 2) + "┤"
-            color: Ascii.frame
+            cols: root.cols
         }
 
         Row {

@@ -25,7 +25,7 @@ PanelWindow {
     WlrLayershell.layer: WlrLayer.Overlay
     WlrLayershell.namespace: "asciibar-toasts"
 
-    implicitWidth: 42 * Ascii.cw
+    implicitWidth: (42 + (Ascii.dialog ? 2 : 0)) * Ascii.cw
     implicitHeight: Math.max(1, column.implicitHeight)
 
     Column {

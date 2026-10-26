@@ -11,29 +11,37 @@ Item {
     property color titleColor: Ascii.acc
 
     readonly property string shownTitle: title.length > cols - 6 ? title.slice(0, Math.max(0, cols - 7)) + "…" : title
+    readonly property int titleCol: Ascii.dialog ? Math.floor((cols - shownTitle.length - 2) / 2) + 1 : 3
 
-    width: cols * Ascii.cw
-    height: rows * Ascii.ch
+    width: (cols + (Ascii.dialog ? 2 : 0)) * Ascii.cw
+    height: (rows + (Ascii.dialog ? 1 : 0)) * Ascii.ch
 
     Rectangle {
-        anchors.fill: parent
+        visible: Ascii.dialog
+        x: 2 * Ascii.cw
+        y: Ascii.ch
+        width: root.cols * Ascii.cw
+        height: root.rows * Ascii.ch
+        color: "#000000"
+    }
+
+    Rectangle {
+        width: root.cols * Ascii.cw
+        height: root.rows * Ascii.ch
         color: Ascii.bg
     }
 
-    AsciiText {
-        color: root.frameColor
-        text: {
-            const gap = root.shownTitle !== "" ? " ".repeat(root.shownTitle.length + 2) : ""
-            const inner = Math.max(0, root.cols - 2)
-            const top = "┌─" + gap + "─".repeat(Math.max(0, inner - 1 - gap.length)) + "┐"
-            const mid = "│" + " ".repeat(inner) + "│"
-            const bottom = "└" + "─".repeat(inner) + "┘"
-            return [top, ...Array(Math.max(0, root.rows - 2)).fill(mid), bottom].join("\n")
-        }
+    Frame {
+        cols: root.cols
+        rows: root.rows
+        tl: root.frameColor
+        br: Ascii.dialog ? Ascii.shade : root.frameColor
+        gapCol: root.titleCol - 1
+        gapLen: root.shownTitle !== "" ? root.shownTitle.length + 2 : 0
     }
 
     AsciiText {
-        x: 3 * Ascii.cw
+        x: root.titleCol * Ascii.cw
         visible: root.shownTitle !== ""
         color: root.titleColor
         text: root.shownTitle

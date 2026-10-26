@@ -1,4 +1,4 @@
-include vesperrc
+include classicrc
 
 set recolor true
 set statusbar-basename true

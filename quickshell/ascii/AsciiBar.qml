@@ -1,6 +1,7 @@
 import QtQuick
 import Quickshell
 import Quickshell.Hyprland
+import Quickshell.Services.Mpris
 import Quickshell.Services.Pipewire
 import Quickshell.Services.SystemTray
 import Quickshell.Services.UPower
@@ -23,6 +24,10 @@ PanelWindow {
         || battery.state === UPowerDeviceState.FullyCharged
     readonly property bool batteryLow: battery.percentage <= 0.15 && !charging
     readonly property var audio: Pipewire.defaultAudioSink?.audio ?? null
+    readonly property var players: [...Mpris.players.values]
+    readonly property var player: players.find(p => p.isPlaying)
+        ?? players.find(p => p.playbackState === MprisPlaybackState.Paused)
+        ?? null
 
     function cycle(step) {
         const i = workspaces.findIndex(w => w.active)
@@ -37,10 +42,13 @@ PanelWindow {
     }
     implicitHeight: 2 * Ascii.ch
     exclusiveZone: implicitHeight
+    readonly property int itemsHeight: Ascii.dialog
+        ? implicitHeight - Ascii.ch / 2 + Math.ceil(Ascii.ch / 4) - 1 - margins.top
+        : implicitHeight
     margins {
         top: 4
-        left: 9
-        right: 9
+        left: Ascii.dialog ? 16 : 9
+        right: Ascii.dialog ? 16 : 9
     }
     color: "transparent"
     WlrLayershell.namespace: "asciibar"
@@ -59,6 +67,11 @@ PanelWindow {
         barWindow: bar
     }
 
+    AsciiPlayer {
+        id: playerBox
+        barWindow: bar
+    }
+
     BorderImage {
         anchors.fill: parent
         source: "file://" + Quickshell.env("HOME") + "/.config/hypr/borders/ascii-border-slim.png"
@@ -72,9 +85,14 @@ PanelWindow {
     }
 
     Row {
-        x: 2 * Ascii.cw
-        height: parent.height
+        x: Ascii.dialog ? 0 : 2 * Ascii.cw
+        height: bar.itemsHeight
         spacing: 2 * Ascii.cw
+
+        AsciiWindowMap {
+            anchors.verticalCenter: parent.verticalCenter
+            workspace: Hyprland.monitorFor(bar.modelData)?.activeWorkspace ?? null
+        }
 
         Repeater {
             model: ScriptModel {
@@ -86,7 +104,7 @@ PanelWindow {
 
                 anchors.verticalCenter: parent.verticalCenter
                 text: modelData.name
-                color: modelData.active ? Ascii.fg : Ascii.frame
+                color: modelData.active ? Ascii.barFg : Ascii.barFrame
                 font.bold: modelData.active
 
                 MouseArea {
@@ -101,8 +119,8 @@ PanelWindow {
 
     Row {
         anchors.right: parent.right
-        anchors.rightMargin: 2 * Ascii.cw
-        height: parent.height
+        anchors.rightMargin: Ascii.dialog ? 0 : 2 * Ascii.cw
+        height: bar.itemsHeight
         spacing: 3 * Ascii.cw
 
         Repeater {
@@ -143,21 +161,21 @@ PanelWindow {
             visible: SysStats.cpu >= 0.9
             label: "cpu "
             value: Math.round(SysStats.cpu * 100) + "%"
-            valueColor: Ascii.red
+            valueColor: Ascii.barRed
         }
 
         Alert {
             visible: SysStats.temp >= 80
             label: "tmp "
             value: Math.round(SysStats.temp) + "°"
-            valueColor: Ascii.red
+            valueColor: Ascii.barRed
         }
 
         Alert {
             visible: Notifs.count > 0 || Notifs.dnd
             label: Notifs.dnd ? "dnd " : "msg "
             value: Notifs.count
-            valueColor: Ascii.acc
+            valueColor: Ascii.barAcc
 
             MouseArea {
                 anchors.fill: parent
@@ -167,10 +185,28 @@ PanelWindow {
         }
 
         Alert {
+            id: nowPlaying
+
+            visible: bar.player !== null
+            label: bar.player?.isPlaying ? "\uf001 " : "\uf04c "
+            value: {
+                const t = (bar.player?.trackTitle || bar.player?.identity || "").toLowerCase()
+                return t.length > 24 ? t.slice(0, 23) + "…" : t
+            }
+            labelColor: bar.player?.isPlaying ? Ascii.barDim : Ascii.barFrame
+            valueColor: playerBox.visible ? Ascii.barAcc : labelColor
+
+            MouseArea {
+                anchors.fill: parent
+                onClicked: playerBox.toggle(bar.player, nowPlaying)
+            }
+        }
+
+        Alert {
             visible: bar.audio !== null
             label: "vol "
             value: bar.audio?.muted ? "mute" : Math.round((bar.audio?.volume ?? 0) * 100) + "%"
-            valueColor: Ascii.dim
+            valueColor: Ascii.barDim
 
             MouseArea {
                 anchors.fill: parent
@@ -183,13 +219,13 @@ PanelWindow {
             anchors.verticalCenter: parent.verticalCenter
             visible: bar.battery.ready && bar.battery.isLaptopBattery
             text: Math.round(bar.battery.percentage * 100) + "%" + (bar.charging ? "+" : "")
-            color: bar.batteryLow ? Ascii.red : Ascii.dim
+            color: bar.batteryLow ? Ascii.barRed : Ascii.barDim
         }
 
         AsciiText {
             anchors.verticalCenter: parent.verticalCenter
             text: Qt.formatDateTime(time.date, clockHover.hovered ? "ddd d MMM  h:mm ap" : "h:mm ap").toLowerCase()
-            color: Ascii.fg
+            color: Ascii.barFg
 
             HoverHandler {
                 id: clockHover
@@ -202,7 +238,8 @@ PanelWindow {
 
         property string label
         property string value
-        property color valueColor: Ascii.fg
+        property color labelColor: Ascii.barDim
+        property color valueColor: Ascii.barFg
 
         anchors.verticalCenter: parent?.verticalCenter
         implicitWidth: alertRow.implicitWidth
@@ -213,7 +250,7 @@ PanelWindow {
 
             AsciiText {
                 text: alert.label
-                color: Ascii.dim
+                color: alert.labelColor
             }
 
             AsciiText {

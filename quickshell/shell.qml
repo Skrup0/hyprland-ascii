@@ -20,6 +20,8 @@ ShellRoot {
 
     AsciiHistory {}
 
+    AsciiClipboard {}
+
     IpcHandler {
         target: "startmenu"
 

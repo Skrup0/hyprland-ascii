@@ -1,6 +1,6 @@
 [flavor]
-dark = "vesper"
-light = "vesper"
+dark = "classic"
+light = "classic"
 
 [status]
 sep_left  = { open = "█", close = "█" }

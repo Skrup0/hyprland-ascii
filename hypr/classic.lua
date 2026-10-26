@@ -1,12 +1,11 @@
--- Vesper group colours (rice/ascii/vesperize.py, from Noctalia's noctalia.lua)
 
-local primary = "rgb(ffc799)"
-local surface = "rgb(101010)"
-local on_surface = "rgb(a0a0a0)"
-local secondary = "rgb(ffc799)"
-local on_secondary = "rgb(101010)"
-local error = "rgb(ff8080)"
-local on_error = "rgb(101010)"
+local primary = "rgb(0000aa)"
+local surface = "rgb(aaaaaa)"
+local on_surface = "rgb(000000)"
+local secondary = "rgb(0000aa)"
+local on_secondary = "rgb(ffffff)"
+local error = "rgb(aa0000)"
+local on_error = "rgb(ffffff)"
 
 local function apply_theme()
     hl.config({
@@ -35,6 +34,26 @@ local function apply_theme()
                 text_color_inactive = on_surface,
                 text_color_locked_active = on_error,
                 text_color_locked_inactive = on_surface,
+            },
+        },
+    })
+    hl.config({
+        general = {
+            gaps_in  = {top = 14, right = 16, bottom = 14, left = 16},
+            gaps_out = {top = 18, right = 32, bottom = 28, left = 16},
+        },
+        decoration = {
+            shadow = {
+                enabled = true,
+                range   = 0,
+                sharp   = true,
+                offset  = {16, 14},
+                color   = 0xff000000,
+            },
+        },
+        plugin = {
+            hyprbars = {
+                bar_text_align = "center",
             },
         },
     })

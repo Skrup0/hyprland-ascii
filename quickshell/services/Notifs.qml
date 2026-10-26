@@ -1,6 +1,7 @@
 pragma Singleton
 
 import Quickshell
+import Quickshell.Hyprland
 import Quickshell.Services.Notifications
 import QtQuick
 
@@ -26,8 +27,17 @@ Singleton {
     }
 
     function activate(notification) {
+        const window = windowOf(notification)
         const action = [...notification.actions].find(a => a.identifier === "default")
         if (action) action.invoke()
+        Windows.focus(window)
+    }
+
+    function windowOf(notification) {
+        const app = notification.appName.toLowerCase()
+        const names = [notification.desktopEntry.toLowerCase(), app, app.split(" ")[0]].filter(n => n !== "")
+        return Hyprland.toplevels.values.find(t =>
+            names.includes((t.wayland?.appId ?? t.lastIpcObject?.class ?? "").toLowerCase())) ?? null
     }
 
     NotificationServer {

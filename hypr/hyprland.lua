@@ -43,7 +43,9 @@ local browser     = "zen"
 --
 hl.on("hyprland.start", function () 
   hl.exec_cmd("quickshell")
-  hl.exec_cmd("swaybg -i $HOME/.config/wallpapers/ascii-landscape.png -m fill")
+  hl.exec_cmd("swaybg -c 0000aa")
+  hl.exec_cmd("wl-paste --type text --watch cliphist store")
+  hl.exec_cmd("wl-paste --type image --watch cliphist store")
 end)
 
 
@@ -175,7 +177,7 @@ hl.config({
 hl.config({
     scrolling = {
         fullscreen_on_one_column = true,
-        wrap_swapcol             = false, -- stop at the ends instead of wrapping around
+        wrap_swapcol             = false,
     },
 })
 
@@ -246,6 +248,7 @@ hl.bind(mainMod .. " + Q", hl.dsp.window.close())
 hl.bind(mainMod .. " + SHIFT + Q", hl.dsp.exec_cmd("command -v hyprshutdown >/dev/null 2>&1 && hyprshutdown || hyprctl dispatch 'hl.dsp.exit()'"))
 hl.bind(mainMod .. " + D", hl.dsp.exec_cmd(menu))
 hl.bind(mainMod .. " + SHIFT + D", hl.dsp.exec_cmd("qs ipc call notifications history"))
+hl.bind(mainMod .. " + C", hl.dsp.exec_cmd("qs ipc call clipboard toggle"))
 hl.bind(mainMod .. " + F12", hl.dsp.exec_cmd('grim -g "$(slurp)" -t png - | wl-copy'))
 hl.bind(mainMod .. " + SHIFT + F12", hl.dsp.exec_cmd("grim -t png - | wl-copy"))
 hl.bind(mainMod .. "+ TAB", hl.dsp.focus({ workspace = "previous"}))
@@ -261,10 +264,17 @@ hl.bind(mainMod .. " + H", hl.dsp.focus({ direction = "left" }))
 hl.bind(mainMod .. " + J", hl.dsp.focus({ direction = "up" }))
 hl.bind(mainMod .. " + K", hl.dsp.focus({ direction = "down" }))
 
-hl.bind(mainMod .. " + SHIFT + L", hl.dsp.window.move({ direction = "right" }))
-hl.bind(mainMod .. " + SHIFT + H", hl.dsp.window.move({ direction = "left" }))
-hl.bind(mainMod .. " + SHIFT + J", hl.dsp.window.move({ direction = "up" }))
-hl.bind(mainMod .. " + SHIFT + K", hl.dsp.window.move({ direction = "down" }))
+local function moved(action)
+    return function()
+        hl.dispatch(action)
+        hl.dispatch(hl.dsp.event("windowmap"))
+    end
+end
+
+hl.bind(mainMod .. " + SHIFT + L", moved(hl.dsp.window.move({ direction = "right" })))
+hl.bind(mainMod .. " + SHIFT + H", moved(hl.dsp.window.move({ direction = "left" })))
+hl.bind(mainMod .. " + SHIFT + J", moved(hl.dsp.window.move({ direction = "up" })))
+hl.bind(mainMod .. " + SHIFT + K", moved(hl.dsp.window.move({ direction = "down" })))
 
 -- Switch workspaces with mainMod + [0-9]
 -- Move active window to a workspace with mainMod + SHIFT + [0-9]
@@ -362,21 +372,21 @@ hl.plugin.load(os.getenv("HOME") .. "/Documents/imgborders/build/libimgborders.s
 hl.config({
     plugin = {
         hyprbars = {
-            bar_height = 18,
-            bar_color = "rgba(00000000)", 
-            bar_text_font = "JetBrainsMono NFM",
-            bar_text_size = 15,
-            bar_text_weight = "normal",
+            bar_height = 14,
+            bar_color = "rgba(00000000)",
+            bar_text_font = "Terminus",
+            bar_text_size = 14,
+            bar_text_weight = "bold",
             bar_text_align = "left",
-            bar_padding = 18, 
+            bar_padding = 16,
             bar_button_padding = 0,
-            ['col.text'] = "rgb(ffc799)",
+            ['col.text'] = "rgb(0000aa)",
             bar_precedence_over_border = false,
         },
         imgborders = {
             image = "~/.config/hypr/borders/ascii-border.png",
-            sizes = {top = 18, right = 9, bottom = 9, left = 9}, 
-            insets = {top = 18, right = 0, bottom = 0, left = 0},
+            sizes = {top = 14, right = 8, bottom = 7, left = 8},
+            insets = {top = 14, right = 0, bottom = 0, left = 0},
             scale = 1.0,
             smooth = false,
             blur = false,
@@ -384,13 +394,12 @@ hl.config({
     },
 })
 
--- unfocused windows' titles in dim grey; the focused one keeps col.text
 hl.window_rule({
   name = "dim-unfocused-titles",
   match = {
     focus = false
   },
-  ["hyprbars:title_color"] = "rgb(707070)",
+  ["hyprbars:title_color"] = "rgb(555555)",
 })
 
-require("vesper").apply_theme()
+require("classic").apply_theme()

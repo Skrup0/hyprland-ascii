@@ -8,8 +8,9 @@ import qs.services
 PanelWindow {
     id: root
 
-    readonly property int cols: 44
-    readonly property int listRows: 14
+    readonly property int cols: 64
+    readonly property int listRows: 11
+    readonly property int menuRows: listRows + 5
 
     readonly property var session: [
         { name: "log off", command: ["hyprctl", "dispatch", Hyprland.usingLua ? "hl.dsp.exit()" : "exit"], confirm: true },
@@ -17,6 +18,7 @@ PanelWindow {
         { name: "restart", command: ["loginctl", "reboot"], confirm: true },
         { name: "shut down", command: ["loginctl", "poweroff"], confirm: true }
     ]
+    readonly property var quick: ["Do not disturb", "Clipboard history", "Session"]
 
     readonly property var apps: [...DesktopEntries.applications.values]
         .filter(a => !a.noDisplay)
@@ -32,7 +34,15 @@ PanelWindow {
             .concat(session.filter(s => s.name.includes(q)))
     }
 
+    property string page: "apps"
+    readonly property var shown: page === "session" ? session : results
+    readonly property int count: shown.length + (page === "apps" ? quick.length : 0)
+    property int sel: 0
+    property int btn: 0
     property string armed: ""
+
+    onSelChanged: list.currentIndex = sel < shown.length ? sel : -1
+    onShownChanged: list.currentIndex = sel < shown.length ? sel : -1
 
     function toggle(screenName) {
         if (visible) {
@@ -41,10 +51,46 @@ PanelWindow {
         }
         screen = [...Quickshell.screens].find(s => s.name === screenName) ?? Quickshell.screens[0]
         input.text = ""
-        list.currentIndex = 0
+        page = "apps"
+        sel = 0
+        btn = 0
         armed = ""
         visible = true
         input.forceActiveFocus()
+    }
+
+    function move(by) {
+        sel = sel < 0 ? (by > 0 ? 0 : count - 1) : (sel + by + count) % count
+    }
+
+    function activate() {
+        if (btn === 1)
+            return back()
+        if (page === "apps" && sel >= shown.length) {
+            if (quick[sel - shown.length] === "Do not disturb") {
+                Notifs.dnd = !Notifs.dnd
+            } else if (quick[sel - shown.length] === "Session") {
+                page = "session"
+                sel = 0
+                armed = ""
+            } else {
+                visible = false
+                Quickshell.execDetached(["qs", "ipc", "call", "clipboard", "toggle"])
+            }
+            return
+        }
+        run(sel >= 0 ? shown[sel] : null)
+    }
+
+    function back() {
+        if (page === "session") {
+            page = "apps"
+            sel = results.length + quick.indexOf("Session")
+            btn = 0
+            armed = ""
+        } else {
+            visible = false
+        }
     }
 
     function run(item) {
@@ -66,21 +112,25 @@ PanelWindow {
         visible = false
     }
 
+    function label(item) {
+        const name = root.armed === item.name ? "sure? press again" : item.name
+        return name.charAt(0).toUpperCase() + name.slice(1)
+    }
+
     visible: false
     anchors {
         top: true
         left: true
     }
     margins {
-        top: 4
-        left: 9
+        top: Math.round(((screen?.height ?? 0) - box.height) / 2)
+        left: Math.round(((screen?.width ?? 0) - box.width) / 2)
     }
-    exclusionMode: ExclusionMode.Normal
-    exclusiveZone: 0
+    exclusionMode: ExclusionMode.Ignore
     color: "transparent"
     WlrLayershell.layer: WlrLayer.Overlay
     WlrLayershell.namespace: "asciibar-launcher"
-    WlrLayershell.keyboardFocus: visible ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
+    WlrLayershell.keyboardFocus: visible ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
     implicitWidth: box.width
     implicitHeight: box.height
 
@@ -101,138 +151,276 @@ PanelWindow {
         onTriggered: root.armed = ""
     }
 
+    component Inset: Frame {
+        tl: Ascii.shade
+        br: Ascii.frame
+    }
+
+    component Entry: Item {
+        id: entry
+
+        property string name: ""
+        property string suffix: ""
+        property string mark: ""
+        property string note: ""
+        property bool current: false
+        property bool hotkey: true
+
+        readonly property string shownName: name.length > 28 ? name.slice(0, 27) + "…" : name
+
+        width: (root.cols - 6) * Ascii.cw
+        height: Ascii.ch
+
+        Rectangle {
+            x: 3 * Ascii.cw
+            width: (4 + entry.shownName.length + entry.suffix.length) * Ascii.cw
+            height: Ascii.ch
+            visible: entry.current
+            color: Ascii.acc
+        }
+        AsciiText {
+            x: 3 * Ascii.cw
+            text: entry.mark
+            color: entry.current ? Ascii.accText : Ascii.fg
+            font.bold: entry.current
+        }
+        AsciiText {
+            x: 7 * Ascii.cw
+            text: (entry.hotkey ? " " + entry.shownName.slice(1) : entry.shownName) + entry.suffix
+            color: entry.current ? Ascii.accText : Ascii.fg
+            font.bold: entry.current
+        }
+        AsciiText {
+            x: 7 * Ascii.cw
+            visible: entry.hotkey
+            text: entry.shownName.charAt(0)
+            color: entry.current ? Ascii.accKey : Ascii.red
+            font.bold: true
+        }
+        AsciiText {
+            x: 37 * Ascii.cw
+            width: 19 * Ascii.cw
+            elide: Text.ElideRight
+            text: entry.note
+            color: Ascii.dim
+        }
+    }
+
+    component Button: Item {
+        id: button
+
+        property string text: ""
+        property int which: 0
+
+        readonly property bool on: root.btn === which
+        readonly property string core: text.replace(/^ +/, "")
+        readonly property int lead: text.length - core.length
+
+        width: (text.length + 2) * Ascii.cw
+        height: Ascii.ch
+
+        Rectangle {
+            anchors.fill: parent
+            visible: button.on
+            color: Ascii.acc
+        }
+        AsciiText {
+            text: "<" + " ".repeat(button.lead + 1) + button.core.slice(1) + ">"
+            color: button.on ? Ascii.accText : Ascii.fg
+            font.bold: true
+        }
+        AsciiText {
+            x: (1 + button.lead) * Ascii.cw
+            text: button.core.charAt(0)
+            color: button.on ? Ascii.accKey : Ascii.red
+            font.bold: true
+        }
+        MouseArea {
+            anchors.fill: parent
+            hoverEnabled: true
+            onEntered: root.btn = button.which
+            onClicked: {
+                root.btn = button.which
+                root.activate()
+            }
+        }
+    }
+
     Box {
         id: box
 
         cols: root.cols
-        rows: root.listRows + 6
-        title: "run"
+        rows: root.menuRows + 9
+        title: root.page === "session" ? "Session" : "Launcher"
 
-        AsciiText {
+        Inset {
             x: 2 * Ascii.cw
             y: Ascii.ch
+            cols: root.cols - 4
+            rows: 3
+        }
+
+        AsciiText {
+            x: 4 * Ascii.cw
+            y: 2 * Ascii.ch
             text: ">"
             color: Ascii.acc
+            font.bold: true
         }
 
         TextInput {
             id: input
 
-            x: 4 * Ascii.cw
-            y: Ascii.ch
-            width: (root.cols - 6) * Ascii.cw
+            x: 6 * Ascii.cw
+            y: 2 * Ascii.ch
+            width: (root.cols - 10) * Ascii.cw
             height: Ascii.ch
             verticalAlignment: TextInput.AlignVCenter
             color: Ascii.fg
             selectionColor: Ascii.acc
-            selectedTextColor: Ascii.bg
+            selectedTextColor: Ascii.accText
             font.family: Ascii.family
+            font.styleName: Ascii.style
             font.pixelSize: Ascii.pixelSize
             clip: true
+            cursorDelegate: Rectangle {
+                width: Ascii.cw
+                height: Ascii.ch
+                color: Ascii.acc
+                visible: input.cursorVisible
+            }
             onTextChanged: {
-                list.currentIndex = 0
+                root.page = "apps"
                 root.armed = ""
+                root.btn = 0
+                root.sel = root.results.length || text.trim() === "" ? 0 : -1
             }
 
-            Keys.onEscapePressed: root.visible = false
-            Keys.onUpPressed: list.currentIndex = Math.max(0, list.currentIndex - 1)
-            Keys.onDownPressed: list.currentIndex = Math.min(list.count - 1, list.currentIndex + 1)
-            Keys.onReturnPressed: root.run(root.results[list.currentIndex])
-            Keys.onEnterPressed: root.run(root.results[list.currentIndex])
+            Keys.onEscapePressed: root.back()
+            Keys.onUpPressed: root.move(-1)
+            Keys.onDownPressed: root.move(1)
+            Keys.onTabPressed: root.btn = 1 - root.btn
+            Keys.onPressed: event => {
+                if (event.key === Qt.Key_Home || event.key === Qt.Key_End) {
+                    root.sel = event.key === Qt.Key_Home ? 0 : root.count - 1
+                    event.accepted = true
+                }
+            }
+            Keys.onReturnPressed: root.activate()
+            Keys.onEnterPressed: root.activate()
         }
 
-        Repeater {
-            model: [2, root.listRows + 3]
-
-            delegate: AsciiText {
-                required property int modelData
-
-                y: modelData * Ascii.ch
-                text: "├" + "─".repeat(root.cols - 2) + "┤"
-                color: Ascii.frame
-            }
+        Inset {
+            x: 2 * Ascii.cw
+            y: 4 * Ascii.ch
+            cols: root.cols - 4
+            rows: root.menuRows + 2
         }
 
         ListView {
             id: list
 
-            x: Ascii.cw
-            y: 3 * Ascii.ch
-            width: (root.cols - 2) * Ascii.cw
-            height: root.listRows * Ascii.ch
+            x: 3 * Ascii.cw
+            y: 5 * Ascii.ch
+            width: (root.cols - 6) * Ascii.cw
+            height: (root.page === "session" ? root.menuRows : root.listRows) * Ascii.ch
             clip: true
             boundsBehavior: Flickable.StopAtBounds
             highlightMoveDuration: 0
-            model: root.results
+            model: root.shown
 
-            delegate: Item {
-                id: row
-
+            delegate: Entry {
                 required property var modelData
                 required property int index
 
-                readonly property bool current: ListView.isCurrentItem
-                readonly property bool sessionEntry: !!modelData.command && !modelData.execute
-
-                width: list.width
-                height: Ascii.ch
-
-                Rectangle {
-                    anchors.fill: parent
-                    visible: row.current
-                    color: Ascii.acc
-                }
-
-                AsciiText {
-                    x: Ascii.cw
-                    width: parent.width - 2 * Ascii.cw
-                    elide: Text.ElideRight
-                    text: (row.current ? "▸ " : "  ")
-                        + (root.armed === row.modelData.name ? "sure? press again" : row.modelData.name)
-                    color: row.current ? Ascii.bg : row.sessionEntry ? Ascii.red : Ascii.fg
-                }
+                name: modelData.command && !modelData.execute ? root.label(modelData) : modelData.name
+                note: modelData.genericName ?? ""
+                current: index === root.sel
 
                 MouseArea {
                     anchors.fill: parent
                     hoverEnabled: true
-                    onEntered: list.currentIndex = row.index
-                    onClicked: root.run(row.modelData)
+                    onEntered: {
+                        root.sel = parent.index
+                        root.btn = 0
+                    }
+                    onClicked: {
+                        root.btn = 0
+                        root.activate()
+                    }
                 }
             }
         }
 
         AsciiText {
-            x: 2 * Ascii.cw
-            y: 3 * Ascii.ch
+            x: 10 * Ascii.cw
+            y: 5 * Ascii.ch
             visible: list.count === 0
-            text: input.text.trim() === "" ? "" : "enter runs: " + input.text.trim()
+            text: input.text.trim() === "" ? "" : "Enter runs: " + input.text.trim()
             color: Ascii.dim
-            width: (root.cols - 4) * Ascii.cw
+            width: (root.cols - 12) * Ascii.cw
             elide: Text.ElideRight
         }
 
-        Row {
-            x: 2 * Ascii.cw
-            y: (root.listRows + 4) * Ascii.ch
-            spacing: 2 * Ascii.cw
+        Column {
+            x: 3 * Ascii.cw
+            y: (6 + root.listRows) * Ascii.ch
+            visible: root.page === "apps"
+
+            Entry {
+                name: "*** Quick settings ***"
+                hotkey: false
+            }
 
             Repeater {
-                model: root.session
+                model: root.quick
 
-                delegate: AsciiText {
-                    required property var modelData
+                delegate: Entry {
+                    required property string modelData
+                    required property int index
 
-                    text: root.armed === modelData.name ? "sure?" : modelData.name
-                    color: root.armed === modelData.name ? Ascii.red : Ascii.dim
+                    readonly property int at: root.shown.length + index
+
+                    readonly property bool toggle: modelData === "Do not disturb"
+
+                    name: modelData
+                    suffix: toggle ? "" : "  --->"
+                    mark: toggle ? (Notifs.dnd ? "[*]" : "[ ]") : ""
+                    current: root.sel === at
 
                     MouseArea {
                         anchors.fill: parent
                         hoverEnabled: true
-                        onEntered: parent.color = Ascii.acc
-                        onExited: parent.color = Qt.binding(() => root.armed === parent.modelData.name ? Ascii.red : Ascii.dim)
-                        onClicked: root.run(parent.modelData)
+                        onEntered: {
+                            root.sel = parent.at
+                            root.btn = 0
+                        }
+                        onClicked: {
+                            root.btn = 0
+                            root.activate()
+                        }
                     }
                 }
+            }
+        }
+
+        Separator {
+            y: (root.menuRows + 6) * Ascii.ch
+            cols: root.cols
+        }
+
+        Row {
+            x: Math.floor((root.cols - 21) / 2) * Ascii.cw
+            y: (root.menuRows + 7) * Ascii.ch
+            spacing: 5 * Ascii.cw
+
+            Button {
+                text: "Select"
+                which: 0
+            }
+            Button {
+                text: " Exit "
+                which: 1
             }
         }
     }

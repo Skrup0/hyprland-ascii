@@ -1,0 +1,22 @@
+[colors-dark]
+foreground=000000
+background=aaaaaa
+regular0=000000
+regular1=aa0000
+regular2=005f00
+regular3=6b3a00
+regular4=0000aa
+regular5=6a006a
+regular6=005f5f
+regular7=aaaaaa
+bright0=555555
+bright1=aa0000
+bright2=005f00
+bright3=6b3a00
+bright4=0000aa
+bright5=6a006a
+bright6=005f5f
+bright7=ffffff
+selection-foreground=ffffff
+selection-background=0000aa
+cursor=aaaaaa 000000
