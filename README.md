@@ -1,4 +1,4 @@
-# HYPRLAND-ASCII
+# HYPRLAND-ASCII (Dialog)
 
 Patching Hyprbars:
 
